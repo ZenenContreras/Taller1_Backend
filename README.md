@@ -1,4 +1,4 @@
-#  D&D 5e Monster API Processor
+#  Monster API Processor
 
 Script avanzado en JavaScript para la extracción, normalización y análisis de datos desde la [D&D 5e API](https://www.dnd5eapi.co/).
 

@@ -1,35 +1,59 @@
-const BASE_URL = 'https://www.dnd5eapi.co/api/monsters';
+const normalizeMonster = (m) => {
 
-async function fetchMonsters (Limit = 40) {
-    try {
+    const acValue = Array.isArray(m.armor_class) 
+    ? m.armor_class[0]?.value 
+    : m.armor_class;
 
-        const response = await fetch(BASE_URL)
-        if (!response.ok) throw new Error('Error al obtener la lista')
-        const data = await response.json();
+  const speedValues = Object.values(m.speed || {}).map(s => parseInt(s) || 0);
+  const maxSpeed = Math.max(...speedValues, 0);
 
-        const selectedMonsters = data.results.slice(0, Limit);
+  return {
+    index: m.index,
+    name: m.name,
+    size: m.size,
+    type: m.type,
+    alignment: m.alignment,
+    cr: m.challenge_rating,
+    ac: acValue,
+    hp: m.hit_points,
+    speed: maxSpeed,
+    stats: {
+      str: m.strength,
+      dex: m.dexterity,
+      con: m.constitution,
+      int: m.intelligence,
+      wis: m.wisdom,
+      cha: m.charisma
+    },
+    immuneCount: m.damage_immunities?.length || 0,
+    resistCount: m.damage_resistances?.length || 0,
+    vulnCount: m.damage_vulnerabilities?.length || 0,
+    hasLegendary: (m.legendary_actions?.length || 0) > 0
+  };
+};
 
-        const detailPromises = selectedMonsters.map(async (monster) => {
-            try {
-                const detailRes = await fetch(`https://www.dnd5eapi.co${monster.url}`);
+// Integración en la función principal
+async function getNormalizedMonsters(limit = 40) {
+  try {
+    const response = await fetch('https://www.dnd5eapi.co/api/monsters');
+    const { results } = await response.json();
 
-                if (!detailRes.ok) return null;
+    const detailPromises = results.slice(0, limit).map(async (m) => {
+      const res = await fetch(`https://www.dnd5eapi.co${m.url}`);
+      return res.json();
+    });
 
-                return await detailRes.ok ? detailRes.json() : null;
+    const rawMonsters = await Promise.all(detailPromises);
 
-            } catch (err) {
-                console.error(`Error con el monstruo ${monster.index}:`, err);
-                return null;
-            }
-        });
+    // Aplicamos la normalización con .map()
+    const normalizedData = rawMonsters.map(normalizeMonster);
 
-        const monstersDetails = await Promise.all(detailPromises);
-
-        console.log(monstersDetails)
-        
-    } catch (error) {
-        console.error('Error fetching datos: ', error)
-    }
+    console.log(normalizedData);
+    return normalizedData;
+    
+  } catch (error) {
+    console.error("Error procesando monstruos:", error);
+  }
 }
 
-fetchMonsters(40)
+getNormalizedMonsters(40);
